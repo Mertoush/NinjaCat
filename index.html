@@ -1,0 +1,931 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Ninja Kedi</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{background:#0a0a0f;display:flex;justify-content:center;align-items:center;height:100vh;overflow:hidden;font-family:'Press Start 2P',monospace;}
+  #gc{position:relative;width:400px;height:700px;overflow:hidden;border:3px solid #222;box-shadow:0 0 40px #00ffcc33,0 0 80px #00ffcc11;}
+  canvas{display:block;image-rendering:pixelated;image-rendering:crisp-edges;}
+  .screen{position:absolute;top:0;left:0;width:100%;height:100%;display:none;flex-direction:column;justify-content:center;align-items:center;z-index:10;}
+  .screen.active{display:flex;}
+  .pgb{position:absolute;top:0;left:0;right:0;bottom:0;background-image:linear-gradient(rgba(0,255,180,0.03) 1px,transparent 1px),linear-gradient(90deg,rgba(0,255,180,0.03) 1px,transparent 1px);background-size:20px 20px;}
+  .scanlines{position:absolute;top:0;left:0;right:0;bottom:0;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.12) 2px,rgba(0,0,0,0.12) 4px);pointer-events:none;z-index:100;}
+  #menuScreen{background:#08080e;}
+  .mc{position:relative;z-index:2;display:flex;flex-direction:column;align-items:center;width:100%;}
+  .lt{font-size:22px;color:#fff;letter-spacing:3px;text-shadow:4px 4px 0 #00cc99,-1px -1px 0 #005544;margin-bottom:2px;}
+  .lt2{font-size:11px;color:#00ffcc;letter-spacing:4px;text-shadow:2px 2px 0 #005544;}
+  .ls{font-size:7px;color:#00ffcc88;letter-spacing:3px;margin-top:6px;}
+  .pbtn{background:transparent;border:3px solid #00ffcc;color:#00ffcc;font-family:'Press Start 2P',monospace;font-size:14px;padding:14px 40px;cursor:pointer;letter-spacing:3px;margin:10px 0;animation:pp 2s ease-in-out infinite;}
+  @keyframes pp{0%,100%{box-shadow:4px 4px 0 #00cc99,0 0 15px rgba(0,255,204,0.3);}50%{box-shadow:4px 4px 0 #00cc99,0 0 30px rgba(0,255,204,0.7);}}
+  .pbtn:hover{background:#00ffcc;color:#000;}
+  .hsd{margin-top:10px;font-size:7px;color:#445;letter-spacing:2px;}
+  .hsd span{color:#ffcc00;}
+  #soundBtn{position:absolute;top:12px;left:12px;z-index:20;background:transparent;border:2px solid #334;color:#778;font-family:'Press Start 2P',monospace;font-size:8px;padding:6px 10px;cursor:pointer;}
+  #soundBtn:hover{border-color:#00ffcc;color:#00ffcc;}
+  #langBtn{position:absolute;top:12px;right:12px;z-index:20;background:transparent;border:2px solid #334;color:#556;font-family:'Press Start 2P',monospace;font-size:7px;padding:5px 8px;cursor:pointer;}
+  #langBtn:hover{border-color:#00ffcc;color:#00ffcc;}
+  #cdScreen{background:rgba(8,8,14,0.96);}
+  .cdn{font-size:80px;color:#00ffcc;text-shadow:6px 6px 0 #005544,0 0 40px rgba(0,255,204,0.8);animation:cpop 0.9s ease-out;}
+  @keyframes cpop{0%{transform:scale(2);opacity:0;}50%{transform:scale(1.1);opacity:1;}100%{transform:scale(1);}}
+  .cdl{font-size:8px;color:#556;letter-spacing:3px;margin-top:14px;}
+  #hud{position:absolute;top:0;left:0;right:0;padding:10px 14px;display:none;flex-direction:column;gap:3px;z-index:5;pointer-events:none;}
+  #hud.active{display:flex;}
+  .htop{display:flex;justify-content:space-between;align-items:flex-start;}
+  .hleft{display:flex;flex-direction:column;gap:2px;}
+  .hsc{font-size:10px;color:#fff;text-shadow:2px 2px 0 #00cc99;}
+  .hspd{font-size:6px;color:#ffcc00;margin-top:1px;}
+  .hkill{font-size:6px;color:#aaffaa;}
+  .hlv{font-size:10px;color:#ff4455;letter-spacing:3px;}
+  .hcow{font-size:6px;color:#ffaaaa;text-align:right;margin-top:2px;}
+  #milkBarWrap{position:absolute;bottom:38px;left:50%;transform:translateX(-50%);width:200px;z-index:6;display:none;pointer-events:none;text-align:center;}
+  #milkBarWrap.active{display:block;}
+  .mbl{font-size:6px;color:#aaddff;letter-spacing:2px;margin-bottom:3px;}
+  .mbtrack{width:100%;height:11px;background:#0a1a2a;border:2px solid #336688;position:relative;overflow:hidden;}
+  .mbfill{height:100%;background:linear-gradient(90deg,#1166cc,#44aaff,#aaddff);transition:width 0.12s;}
+  .mbsegs{position:absolute;top:0;left:0;right:0;bottom:0;display:flex;}
+  .mbseg{flex:1;border-right:1px solid #224466;}
+  #specialBtn{position:absolute;bottom:56px;left:30%;transform:translateX(-50%);background:rgba(0,160,255,0.12);border:3px solid #00aaff;color:#00aaff;font-family:'Press Start 2P',monospace;font-size:7px;padding:10px 12px;cursor:pointer;letter-spacing:1px;display:none;z-index:6;animation:sbp 0.6s ease-in-out infinite alternate;}
+  #specialBtn.visible{display:block;}
+  @keyframes sbp{from{box-shadow:0 0 10px #00aaff66,4px 4px 0 #004488;}to{box-shadow:0 0 28px #00aaffcc,4px 4px 0 #004488;}}
+  #shieldBtn{position:absolute;bottom:56px;right:10px;background:rgba(0,255,120,0.12);border:3px solid #00ff88;color:#00ff88;font-family:'Press Start 2P',monospace;font-size:7px;padding:10px 12px;cursor:pointer;letter-spacing:1px;display:none;z-index:6;animation:shbp 0.6s ease-in-out infinite alternate;}
+  #shieldBtn.visible{display:block;}
+  @keyframes shbp{from{box-shadow:0 0 10px #00ff8866,4px 4px 0 #006644;}to{box-shadow:0 0 28px #00ff88cc,4px 4px 0 #006644;}}
+  #shieldAuraHud{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:9px;color:#00ff88;font-family:'Press Start 2P',monospace;letter-spacing:2px;display:none;z-index:7;text-align:center;pointer-events:none;animation:shieldFlash 0.4s ease-in-out infinite alternate;}
+  @keyframes shieldFlash{from{color:#00cc66;text-shadow:0 0 10px #00cc66;}to{color:#aaffcc;text-shadow:0 0 22px #00ff88;}}
+  #fireAuraHud{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:9px;color:#ff8800;font-family:'Press Start 2P',monospace;letter-spacing:2px;display:none;z-index:7;text-align:center;pointer-events:none;animation:fireFlash 0.35s ease-in-out infinite alternate;}
+  @keyframes fireFlash{from{color:#ff4400;text-shadow:0 0 10px #ff4400;}to{color:#ffcc00;text-shadow:0 0 22px #ffaa00;}}
+  #bossAlert{position:absolute;top:40%;left:50%;transform:translate(-50%,-50%);font-size:13px;color:#ff4455;text-shadow:3px 3px 0 #880022;letter-spacing:3px;display:none;z-index:15;animation:bfl 0.4s ease-in-out infinite alternate;text-align:center;line-height:2;}
+  @keyframes bfl{from{opacity:0.3;}to{opacity:1;}}
+  #weakSpotHud{position:absolute;top:32%;left:50%;transform:translate(-50%,-50%);font-size:8px;color:#ffff00;font-family:'Press Start 2P',monospace;letter-spacing:2px;display:none;z-index:8;text-align:center;animation:wspot 0.5s ease-in-out infinite alternate;pointer-events:none;}
+  @keyframes wspot{from{color:#ffaa00;text-shadow:0 0 8px #ffaa00;}to{color:#ffff44;text-shadow:0 0 20px #ffff00;}}
+  #goScreen{background:rgba(8,8,14,0.97);}
+  .got{font-size:16px;color:#ff4455;text-shadow:4px 4px 0 #880022;letter-spacing:3px;margin-bottom:14px;text-align:center;}
+  .goreason{font-size:7px;color:#ff8844;letter-spacing:2px;margin-bottom:16px;}
+  .gosl{font-size:9px;color:#778;letter-spacing:2px;margin-bottom:5px;}
+  .gosv{font-size:26px;color:#ffcc00;text-shadow:3px 3px 0 #aa7700;margin-bottom:8px;}
+  .gob{font-size:7px;color:#445;margin-bottom:22px;letter-spacing:2px;}
+  .gob span{color:#ffaa00;}
+  .rbtn{background:transparent;border:3px solid #ff4455;color:#ff4455;font-family:'Press Start 2P',monospace;font-size:10px;padding:12px 28px;cursor:pointer;letter-spacing:2px;box-shadow:4px 4px 0 #880022;margin:5px;}
+  .rbtn:hover{background:#ff4455;color:#000;}
+  .mbtn{background:transparent;border:2px solid #334;color:#556;font-family:'Press Start 2P',monospace;font-size:8px;padding:10px 22px;cursor:pointer;box-shadow:3px 3px 0 #111;margin:5px;}
+  .mbtn:hover{border-color:#778;color:#99a;}
+  .htpBtn{background:transparent;border:2px solid #336655;color:#00cc88;font-family:'Press Start 2P',monospace;font-size:9px;padding:10px 26px;cursor:pointer;letter-spacing:2px;margin:4px 0;}
+  .htpBtn:hover{background:#00cc88;color:#000;}
+  #htpScreen{background:#08080e;}
+</style>
+</head>
+<body>
+<div id="gc">
+  <div class="scanlines"></div>
+  <div id="menuScreen" class="screen active">
+    <div class="pgb"></div>
+    <button id="soundBtn" onclick="toggleSound()">🔊 SES</button>
+    <button id="langBtn" onclick="toggleLang()">EN</button>
+    <div class="mc">
+      <canvas id="logoC" width="120" height="64" style="margin-bottom:4px"></canvas>
+      <div class="lt" id="titleMain">NİNJA KEDİ</div>
+      <div class="lt2" id="titleSub">NINJA CAT</div>
+      <div class="ls" id="lsub">SOULS-LIKE MINI MOBILE GAME</div>
+      <canvas id="menuCat" width="96" height="96" style="margin:10px 0"></canvas>
+      <button class="pbtn" id="playBtn" onclick="startCountdown()">▶ OYNA</button>
+      <button class="htpBtn" id="htpBtn" onclick="showHTP()">❓ NASIL OYNANIR</button>
+      <div class="hsd" id="hiDisp">EN İYİ: <span id="hiVal">0</span></div>
+    </div>
+  </div>
+  <div id="cdScreen" class="screen">
+    <div class="cdn" id="cdNum">3</div>
+    <div class="cdl" id="cdLbl">HAZIR OL!</div>
+  </div>
+  <canvas id="gameCanvas" width="400" height="700"></canvas>
+  <div id="hud">
+    <div class="htop">
+      <div class="hleft">
+        <div class="hsc" id="hScore">0</div>
+        <div class="hspd" id="hSpd">1.0x</div>
+        <div class="hkill" id="hKill">KÖPEK: 0</div>
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:flex-end;">
+        <div class="hlv" id="hLives">♥♥♥</div>
+        <div class="hcow" id="hCow">🐄 0/3</div>
+      </div>
+    </div>
+  </div>
+  <div id="milkBarWrap">
+    <div class="mbl" id="milkBarLabel">🥛 SUPER MILK 0/5</div>
+    <div class="mbtrack">
+      <div class="mbfill" id="milkBarFill" style="width:0%"></div>
+      <div class="mbsegs" id="milkBarSegs"></div>
+    </div>
+  </div>
+  <button id="specialBtn" onclick="fireSpecial()">⚡ ATIŞ</button>
+  <button id="shieldBtn" onclick="activateShield()">🛡 KALKAN</button>
+  <div id="shieldAuraHud">🛡 KALKAN AKTİF! 🛡<br><span id="shieldTimer" style="font-size:7px;"></span></div>
+  <div id="fireAuraHud">🔥 FIRE AURA! 🔥<br><span id="fireTimer" style="font-size:7px;"></span></div>
+  <div id="weakSpotHud" id="weakSpotHud">💥 ZAYIF NOKTA! TIKLAT! 💥</div>
+  <div id="bossAlert">
+    <div id="bossAlertText">⚠ BOSS GELİYOR! ⚠</div>
+    <div id="bossName" style="font-size:11px;color:#ffcc00;letter-spacing:2px;"></div>
+  </div>
+  <div id="goScreen" class="screen">
+    <div class="got" id="goT">GAME OVER</div>
+    <div class="goreason" id="goReason"></div>
+    <div class="gosl" id="goSL">PUAN</div>
+    <div class="gosv" id="goSV">0</div>
+    <div class="gob" id="goB">EN İYİ: <span id="goBV">0</span></div>
+    <button class="rbtn" id="retryBtn" onclick="startCountdown()">↺ TEKRAR</button>
+    <button class="mbtn" id="menuBtn" onclick="showMenu()">ANA MENÜ</button>
+  </div>
+  <div id="htpScreen" class="screen">
+    <div style="position:relative;z-index:2;display:flex;flex-direction:column;align-items:center;padding:28px 24px;text-align:center;">
+      <div style="font-size:10px;color:#00ffcc;letter-spacing:3px;margin-bottom:22px;text-shadow:2px 2px 0 #005544;" id="htpTitle">NASIL OYNANIR</div>
+      <div style="font-size:7px;color:#fff;line-height:2.4;letter-spacing:1px;max-width:320px;" id="htpText"></div>
+      <div style="margin-top:22px;font-size:6px;color:#445;letter-spacing:2px;" id="htpBack">10 SANİYE SONRA GERİ DÖNECEK...</div>
+    </div>
+  </div>
+</div>
+<script>
+const BOSS_DEFS=[
+  {dogsNeeded:5,  hp:1,      name:'KURT',        nameEN:'WOLF',       color:'#aaaacc',accent:'#7777aa',eye:'#ff4444'},
+  {dogsNeeded:15, hp:2,      name:'AYI',          nameEN:'BEAR',       color:'#996633',accent:'#774422',eye:'#ffcc00'},
+  {dogsNeeded:25, hp:4,      name:'FİL',          nameEN:'ELEPHANT',   color:'#888899',accent:'#666677',eye:'#ffffff'},
+  {dogsNeeded:45, hp:8,      name:'KÖPEKBALIĞI',  nameEN:'SHARK',      color:'#5588aa',accent:'#336688',eye:'#00ffff'},
+  {dogsNeeded:65, hp:16,     name:'ASLAN',        nameEN:'LION',       color:'#ddaa44',accent:'#aa7722',eye:'#ff8800'},
+  {dogsNeeded:90, hp:32,     name:'KAPLAN',       nameEN:'TIGER',      color:'#ee8833',accent:'#cc5511',eye:'#ffff00'},
+  {dogsNeeded:120,hp:64,     name:'TİMSAH',       nameEN:'CROC',       color:'#558844',accent:'#336633',eye:'#aaff00'},
+  {dogsNeeded:155,hp:128,    name:'GERGEDİ',      nameEN:'RHINO',      color:'#777788',accent:'#555566',eye:'#aaddff'},
+  {dogsNeeded:195,hp:256,    name:'GORİL',        nameEN:'GORILLA',    color:'#444444',accent:'#222222',eye:'#ff2222'},
+  {dogsNeeded:240,hp:512,    name:'EJDERHA',      nameEN:'DRAGON',     color:'#228844',accent:'#115533',eye:'#ff4400'},
+  {dogsNeeded:290,hp:1024,   name:'CANAVAR',      nameEN:'MONSTER',    color:'#882288',accent:'#551155',eye:'#ffff00'},
+  {dogsNeeded:345,hp:2048,   name:'GOLEM',        nameEN:'GOLEM',      color:'#887755',accent:'#665533',eye:'#44ffff'},
+  {dogsNeeded:405,hp:4096,   name:'SFENKS',       nameEN:'SPHINX',     color:'#ccaa55',accent:'#aa8833',eye:'#8822ff'},
+  {dogsNeeded:470,hp:8192,   name:'DEMİR KURT',   nameEN:'IRON WOLF',  color:'#aabbcc',accent:'#8899aa',eye:'#ff0000'},
+  {dogsNeeded:540,hp:16384,  name:'VAMPİR',       nameEN:'VAMPIRE',    color:'#553366',accent:'#331144',eye:'#ff0055'},
+  {dogsNeeded:615,hp:32768,  name:'TİTAN',        nameEN:'TITAN',      color:'#cc5533',accent:'#993311',eye:'#ffcc00'},
+  {dogsNeeded:695,hp:65536,  name:'DEV AHTAPOT',  nameEN:'KRAKEN',     color:'#336688',accent:'#224466',eye:'#ff8800'},
+  {dogsNeeded:780,hp:131072, name:'KOZMİK KURT',  nameEN:'COSMIC WOLF',color:'#330066',accent:'#110033',eye:'#00ffff'},
+  {dogsNeeded:870,hp:262144, name:'ÖLÜM MELEĞİ',  nameEN:'REAPER',     color:'#111111',accent:'#000000',eye:'#ff00ff'},
+  {dogsNeeded:965,hp:524288, name:'TANRI',         nameEN:'GOD',        color:'#ffdd88',accent:'#ffaa22',eye:'#ffffff'},
+];
+
+// Boss mermi ateşleme hızı: index'e göre artar
+function getBossFireRate(idx){
+  // Her boss biraz daha sık ateşler, ama çok abartılı değil
+  return Math.max(90-idx*3, 30);
+}
+// Boss mermisi hasarı: index'e göre artar
+function getBossBulletDamage(idx){return 1;}
+
+let lang='tr',soundOn=true,gameState='menu';
+let score=0,best=parseInt(localStorage.getItem('nk_best')||'0'),lives=3;
+let cowsShot=0,specialReady=false,milkCollected=0;
+let speedMult=1.0,frame=0,animId=null,scrollY=0;
+let dogsKilled=0,bossIndex=0,bossActive=false,boss=null,bossSpeedMult=1.0;
+let deathReason='';
+let fireAuraActive=false,fireAuraTimer=0,nextFireAt=7,fireAuraFrameTimer=0;
+let shieldActive=false,shieldTimer=0;
+const FIRE_AURA_SECS=30,FIRE_AURA_RADIUS=80,FIRE_DOGS_INTERVAL=7;
+const SHIELD_SECS=5;
+const BASE_SPEED=0.58; // biraz daha hızlı başlangıç
+
+const canvas=document.getElementById('gameCanvas'),ctx=canvas.getContext('2d');
+ctx.imageSmoothingEnabled=false;
+let player={x:200,y:590,w:48,h:48,vx:0};
+let milkDrops=[],cows=[],dogs=[],particles=[],specialBullets=[],bossBullets=[],bgStars=[];
+let inputLeft=false,inputRight=false;
+
+// Boss zayıf nokta sistemi
+let bossWeakHits=0; // kaç süt vurdu
+let bossWeakActive=false; // zayıf nokta açık mı
+let bossStunned=false; // stun mu
+let bossStunTimer=0;
+
+// Boss öfke modu
+let bossRageActive=false,bossRageTimer=0,bossRageBullets=[];
+
+(()=>{const sg=document.getElementById('milkBarSegs');for(let i=0;i<5;i++){const d=document.createElement('div');d.className='mbseg';sg.appendChild(d);}})();
+
+function calcSpeed(){
+  if(score<=0)return BASE_SPEED*bossSpeedMult;
+  // Daha agresif hızlanma
+  const c=Math.floor(score/250),r=score%250;
+  return Math.min(Math.pow(1.85,c)*(1+Math.floor(r/40)*0.15),7.5)*BASE_SPEED*bossSpeedMult;
+}
+
+let audioCtx=null;
+function getAC(){if(!audioCtx)audioCtx=new(window.AudioContext||window.webkitAudioContext)();return audioCtx;}
+function beep(freq,dur,type='square',vol=0.12){if(!soundOn)return;try{const a=getAC(),o=a.createOscillator(),g=a.createGain();o.connect(g);g.connect(a.destination);o.type=type;o.frequency.value=freq;g.gain.setValueAtTime(vol,a.currentTime);g.gain.exponentialRampToValueAtTime(0.001,a.currentTime+dur);o.start();o.stop(a.currentTime+dur);}catch(e){}}
+const SFX={
+  collect: ()=>{beep(880,0.07,'square',0.10);setTimeout(()=>beep(1200,0.05,'square',0.07),45);},
+  dogHit:  ()=>{beep(130,0.30,'sawtooth',0.20);setTimeout(()=>beep(100,0.20,'sawtooth',0.14),80);},
+  cowShot: ()=>{beep(300,0.20,'square',0.25);setTimeout(()=>beep(200,0.30,'sawtooth',0.20),100);},
+  special: ()=>{[440,660,880,1320].forEach((f,i)=>setTimeout(()=>beep(f,0.14,'square',0.17),i*55));},
+  shield:  ()=>{[660,880,1100].forEach((f,i)=>setTimeout(()=>beep(f,0.12,'square',0.18),i*60));},
+  explode: ()=>{beep(90,0.45,'sawtooth',0.27);},
+  bossHit: ()=>{beep(220,0.15,'sawtooth',0.25);setTimeout(()=>beep(180,0.10,'sawtooth',0.2),100);},
+  bossDie: ()=>{[220,330,440,550,660,880].forEach((f,i)=>setTimeout(()=>beep(f,0.2,'square',0.2),i*80));},
+  bossWarn:()=>{[150,200,150,250].forEach((f,i)=>setTimeout(()=>beep(f,0.15,'sawtooth',0.25),i*120));},
+  weakSpot:()=>{beep(660,0.1,'square',0.2);setTimeout(()=>beep(880,0.15,'square',0.22),80);},
+  stun:    ()=>{beep(440,0.4,'sawtooth',0.25);},
+  rage:    ()=>{[100,150,100,200,100].forEach((f,i)=>setTimeout(()=>beep(f,0.15,'sawtooth',0.3),i*80));},
+  cdown:   ()=>beep(440,0.18,'square',0.13),
+  go:      ()=>{beep(880,0.22,'square',0.20);setTimeout(()=>beep(1100,0.12,'square',0.14),110);},
+  tankFull:()=>{[330,440,550].forEach((f,i)=>setTimeout(()=>beep(f,0.12,'square',0.20),i*90));},
+  fireOn:  ()=>{[220,330,440,550].forEach((f,i)=>setTimeout(()=>beep(f,0.18,'sawtooth',0.18),i*60));},
+};
+const BOSS_MELS=[
+  [110,147,110,147,98,110],[130,110,98,110,130,146],[98,110,130,110,98,87],
+  [146,130,110,98,87,98],[165,147,130,147,165,196],[175,196,175,147,130,147],
+  [87,98,87,73,65,73],[110,87,65,87,110,130],[98,87,73,65,73,87],
+  [196,220,196,175,165,175],[73,65,55,65,73,87],[130,146,165,146,130,110],
+  [220,196,175,165,175,196],[87,73,65,55,65,73],[65,55,49,55,65,73],
+  [261,220,196,175,165,175],[55,49,44,49,55,65],[330,294,262,220,196,220],
+  [44,49,44,37,33,37],[440,392,349,330,294,330],
+];
+let musicTimer=null;
+function startMusic(bossMode){
+  if(!soundOn){stopMusic();return;}
+  stopMusic();
+  if(bossMode!==undefined){
+    const mel=BOSS_MELS[bossMode%BOSS_MELS.length];let ni=0;
+    musicTimer=setInterval(()=>{if(!soundOn){stopMusic();return;}beep(mel[ni%mel.length],0.25,'sawtooth',0.10);beep(mel[ni%mel.length]*0.5,0.25,'triangle',0.06);ni++;},280);
+  } else {
+    const mel=[330,392,494,587,494,392,330,262],bass=[110,110,146,110,110,146,165,146];let ni=0;
+    musicTimer=setInterval(()=>{if(!soundOn){stopMusic();return;}beep(mel[ni%mel.length],0.17,'square',0.05);beep(bass[ni%bass.length],0.17,'triangle',0.03);ni++;},190);
+  }
+}
+function stopMusic(){clearInterval(musicTimer);musicTimer=null;}
+
+function P(cx,cy,dx,dy,sc,c){ctx.fillStyle=c;ctx.fillRect(Math.floor(cx+dx*sc),Math.floor(cy+dy*sc),sc,sc);}
+
+function drawCat(cx,cy,sc,fr){
+  const p=(dx,dy,c)=>P(cx,cy,dx,dy,sc,c);
+  const B='#e8c87a',D='#c9a854',E='#111',N='#ff9999',W='#fff',A='#d4a843';
+  // Kalkan varsa mavi parlaklık
+  if(shieldActive){ctx.shadowBlur=22;ctx.shadowColor='#00ff88';}
+  p(2,0,A);p(3,0,A);p(9,0,A);p(10,0,A);p(1,1,A);p(2,1,B);p(3,1,B);p(10,1,B);p(11,1,A);
+  for(let i=1;i<=11;i++)for(let j=2;j<=6;j++)p(i,j,B);
+  for(let i=2;i<=10;i++)p(i,2,'#cc2222');p(6,1,'#ff4444');
+  p(3,3,W);p(4,3,W);p(8,3,W);p(9,3,W);
+  if(fr%50<44){p(3,4,E);p(4,4,E);p(8,4,E);p(9,4,E);}else{p(3,5,D);p(8,5,D);}
+  p(6,5,N);p(0,5,W);p(1,5,W);p(11,5,W);p(12,5,W);
+  for(let i=2;i<=10;i++)for(let j=7;j<=13;j++)p(i,j,B);
+  p(2,7,D);p(10,7,D);p(5,9,D);p(6,9,D);p(7,9,D);p(11,11,D);p(12,10,D);p(12,9,D);p(11,8,D);
+  p(3,14,B);p(4,14,B);p(8,14,B);p(9,14,B);p(3,15,D);p(4,15,D);p(8,15,D);p(9,15,D);
+  ctx.shadowBlur=0;
+}
+
+function drawShieldCircle(px,py){
+  if(!shieldActive)return;
+  const pulse=0.8+0.2*Math.sin(frame*0.2);
+  ctx.save();ctx.globalAlpha=0.35*pulse;
+  ctx.strokeStyle='#00ff88';ctx.lineWidth=4;
+  ctx.shadowBlur=16;ctx.shadowColor='#00ff88';
+  ctx.beginPath();ctx.arc(px,py,36,0,Math.PI*2);ctx.stroke();
+  ctx.globalAlpha=0.12*pulse;ctx.fillStyle='#00ff88';ctx.fill();
+  ctx.restore();
+}
+
+function drawMilk(mx,my,sc){
+  const p=(dx,dy,c)=>P(mx,my,dx,dy,sc,c);
+  p(2,0,'#aaddff');p(3,0,'#aaddff');p(1,1,'#ccecff');p(2,1,'#eef8ff');p(3,1,'#ccecff');p(4,1,'#aaddff');
+  p(0,2,'#aaddff');p(1,2,'#eef8ff');p(2,2,'#fff');p(3,2,'#eef8ff');p(4,2,'#ccecff');p(5,2,'#aaddff');
+  p(0,3,'#aaddff');p(1,3,'#eef8ff');p(2,3,'#fff');p(3,3,'#eef8ff');p(4,3,'#aaddff');
+  p(1,4,'#aaddff');p(2,4,'#ccecff');p(3,4,'#aaddff');p(2,5,'#88ccee');
+}
+
+function drawCow(cx,cy,sc,fr,flip){
+  const p=(dx,dy,c)=>{const rx=flip?Math.floor(cx+(14-dx)*sc):Math.floor(cx+dx*sc);ctx.fillStyle=c;ctx.fillRect(rx,Math.floor(cy+dy*sc),sc,sc);};
+  const W='#eee',B='#222',PK='#ffaabb',BR='#cc8855';
+  for(let i=1;i<=10;i++)for(let j=3;j<=9;j++)p(i,j,W);
+  p(2,3,B);p(3,3,B);p(7,5,B);p(8,5,B);p(7,6,B);p(3,7,B);p(4,7,B);p(3,8,B);
+  for(let i=9;i<=13;i++)for(let j=2;j<=6;j++)p(i,j,W);
+  p(13,3,PK);p(14,3,PK);p(13,4,PK);p(14,4,PK);p(10,3,B);p(10,1,BR);p(11,0,BR);p(12,1,BR);
+  p(3,9,PK);p(4,9,PK);p(5,9,PK);p(6,9,PK);p(3,10,PK);p(4,10,PK);p(5,10,PK);p(6,10,PK);
+  p(2,10,W);p(3,10,W);p(8,10,W);p(9,10,W);p(2,11,B);p(3,11,B);p(8,11,B);p(9,11,B);
+  p(0,5,BR);p(0,6,BR);p(1,7,BR);
+  if(fr%30<8){p(4,11,'#aaddff');p(5,11,'#aaddff');}
+}
+
+function drawDog(cx,cy,sc,fr){
+  const p=(dx,dy,c)=>P(cx,cy,dx,dy,sc,c);
+  const B='#cc7744',D='#aa5533',E='#111',R='#ff4444';
+  for(let i=1;i<=9;i++)for(let j=4;j<=10;j++)p(i,j,B);
+  p(1,4,D);p(9,4,D);
+  for(let i=6;i<=12;i++)for(let j=1;j<=5;j++)p(i,j,B);
+  p(11,3,D);p(12,3,D);p(11,4,D);p(12,4,D);
+  if(fr%20<10)p(13,4,R);
+  p(8,2,E);p(9,2,E);p(6,0,D);p(7,0,D);p(7,1,D);
+  (fr%12<6)?p(0,6,B):p(0,5,B);
+  p(2,11,B);p(3,11,B);p(7,11,B);p(8,11,B);p(2,12,D);p(3,12,D);p(7,12,D);p(8,12,D);
+}
+
+function drawBoss(bx,by,sc,fr,def,idx){
+  const p=(dx,dy,c)=>P(bx,by,dx,dy,sc,c);
+  const C=def.color,A=def.accent,E=def.eye;
+  const bob=Math.floor(Math.sin(fr*0.08)*1);
+  // Stun iken titreme
+  const sx=bossStunned?Math.floor(Math.sin(fr*0.8)*3):0;
+  for(let i=2;i<=12;i++)for(let j=5;j<=11;j++)p(i+sx,j+bob,C);
+  for(let i=3;i<=11;i++)for(let j=11;j<=13;j++)p(i+sx,j+bob,A);
+  const leg=(fr%16<8)?1:0;
+  p(3+sx,14+leg+bob,A);p(4+sx,14+leg+bob,C);p(10+sx,14-leg+bob,A);p(11+sx,14-leg+bob,C);p(3+sx,15+leg+bob,A);p(10+sx,15-leg+bob,A);
+  const hv=idx%5;
+  if(hv===0){for(let i=3;i<=11;i++)for(let j=0;j<=5;j++)p(i+sx,j+bob,C);p(5+sx,1+bob,E);p(6+sx,1+bob,E);p(8+sx,1+bob,E);p(9+sx,1+bob,E);p(6+sx,3+bob,A);p(7+sx,3+bob,A);p(2+sx,0+bob,A);p(3+sx,0+bob,A);p(11+sx,0+bob,A);p(12+sx,0+bob,A);}
+  else if(hv===1){for(let i=2;i<=13;i++)for(let j=0;j<=4;j++)p(i+sx,j+bob,C);p(13+sx,2+bob,A);p(14+sx,2+bob,A);p(13+sx,3+bob,A);p(5+sx,1+bob,E);p(6+sx,1+bob,E);p(9+sx,1+bob,E);p(10+sx,1+bob,E);for(let i=13;i<=15;i++)p(i+sx,3+bob,'#ff4444');}
+  else if(hv===2){for(let i=1;i<=13;i++)for(let j=0;j<=5;j++)p(i+sx,j+bob,C);p(4+sx,2+bob,E);p(5+sx,2+bob,E);p(9+sx,2+bob,E);p(10+sx,2+bob,E);p(13+sx,3+bob,A);p(14+sx,3+bob,A);p(14+sx,4+bob,A);p(1+sx,0+bob,A);p(2+sx,0+bob,A);}
+  else if(hv===3){for(let i=3;i<=12;i++)for(let j=1;j<=5;j++)p(i+sx,j+bob,C);for(let i=5;i<=10;i++)p(i+sx,0+bob,C);p(7+sx,0+bob,A);p(8+sx,0+bob,A);p(5+sx,2+bob,E);p(6+sx,2+bob,E);p(8+sx,2+bob,E);p(9+sx,2+bob,E);p(4+sx,4+bob,'#fff');p(5+sx,4+bob,'#fff');p(9+sx,4+bob,'#fff');p(10+sx,4+bob,'#fff');}
+  else{for(let i=3;i<=11;i++)for(let j=1;j<=5;j++)p(i+sx,j+bob,C);p(2+sx,0+bob,A);p(3+sx,0+bob,A);p(11+sx,0+bob,A);p(12+sx,0+bob,A);p(2+sx,-1+bob,A);p(12+sx,-1+bob,A);p(5+sx,2+bob,E);p(6+sx,2+bob,E);p(8+sx,2+bob,E);p(9+sx,2+bob,E);p(6+sx,4+bob,A);p(7+sx,4+bob,A);p(8+sx,4+bob,A);}
+  if(fr%14<7){p(0+sx,8+bob,A);p(1+sx,9+bob,A);}else{p(0+sx,9+bob,A);p(1+sx,8+bob,A);}
+  if(idx>=15){ctx.shadowBlur=14;ctx.shadowColor=E;p(7+sx,3+bob,E);ctx.shadowBlur=0;}
+  // Zayıf nokta: sarı parlayan daire
+  if(bossWeakActive&&!bossStunned){
+    ctx.save();ctx.globalAlpha=0.6+0.4*Math.sin(fr*0.3);
+    ctx.fillStyle='#ffff00';ctx.shadowBlur=16;ctx.shadowColor='#ffff00';
+    ctx.beginPath();ctx.arc(bx+sx+28,by+bob+22,10,0,Math.PI*2);ctx.fill();
+    ctx.restore();
+  }
+  // Öfke modu: kırmızı aura
+  if(bossRageActive){
+    ctx.save();ctx.globalAlpha=0.18+0.12*Math.sin(fr*0.4);
+    ctx.fillStyle='#ff2200';ctx.shadowBlur=30;ctx.shadowColor='#ff4400';
+    ctx.beginPath();ctx.arc(bx+28,by+22,52,0,Math.PI*2);ctx.fill();
+    ctx.restore();
+  }
+}
+
+function drawBossBar(bx,by,hp,maxHp,name){
+  const W=130,H=8,x0=bx-W/2,y0=by-26;
+  ctx.fillStyle='#111';ctx.fillRect(x0-1,y0-1,W+2,H+2);
+  const pct=hp/maxHp,col=pct>0.5?'#44ff44':pct>0.25?'#ffcc00':'#ff4444';
+  ctx.fillStyle=col;ctx.fillRect(x0,y0,Math.floor(W*pct),H);
+  ctx.strokeStyle='rgba(255,255,255,0.25)';ctx.lineWidth=1;ctx.strokeRect(x0,y0,W,H);
+  ctx.fillStyle='#fff';ctx.font='5px "Press Start 2P",monospace';
+  ctx.textAlign='center';ctx.fillText(name+' '+hp+'/'+maxHp,bx,y0-4);ctx.textAlign='left';
+}
+
+function drawBullet(bx,by){
+  ctx.shadowBlur=18;ctx.shadowColor='#00ffff';
+  ['#fff','#aaffff','#00ffff','#0088ff'].forEach((c,i)=>{ctx.fillStyle=c;ctx.fillRect(Math.floor(bx-8+i*2),Math.floor(by-3+i),16-i*4,6-i*2);});
+  ctx.shadowBlur=0;
+}
+
+// Boss mermisi çiz
+function drawBossBullet(b){
+  ctx.save();ctx.shadowBlur=12;ctx.shadowColor=b.color||'#ff4400';
+  ctx.fillStyle=b.color||'#ff4400';
+  ctx.fillRect(Math.floor(b.x-5),Math.floor(b.y-5),10,10);
+  ctx.fillStyle='#ffff00';ctx.fillRect(Math.floor(b.x-2),Math.floor(b.y-2),4,4);
+  ctx.restore();
+}
+
+// Öfke modu spreyi çiz (kenarlarda dar güvenli alan)
+function drawRageBullet(b){
+  ctx.save();ctx.shadowBlur=14;ctx.shadowColor='#ff2200';
+  ctx.fillStyle='#ff4400';ctx.fillRect(Math.floor(b.x-6),Math.floor(b.y-6),12,12);
+  ctx.fillStyle='#ff8800';ctx.fillRect(Math.floor(b.x-3),Math.floor(b.y-3),6,6);
+  ctx.restore();
+}
+
+function drawFireAura(px,py,fr){
+  const r=FIRE_AURA_RADIUS,pulse=0.85+0.15*Math.sin(fr*0.25);
+  ctx.save();ctx.globalAlpha=0.38*pulse;
+  const grad=ctx.createRadialGradient(px,py,r*0.4,px,py,r);
+  grad.addColorStop(0,'rgba(255,180,0,0.0)');grad.addColorStop(0.6,'rgba(255,100,0,0.5)');grad.addColorStop(1,'rgba(255,40,0,0.0)');
+  ctx.fillStyle=grad;ctx.beginPath();ctx.arc(px,py,r,0,Math.PI*2);ctx.fill();
+  ctx.globalAlpha=0.7*pulse;
+  const cols=['#ff4400','#ff8800','#ffcc00','#ff2200'];
+  for(let i=0;i<14;i++){const a=(Math.PI*2/14)*i+fr*0.08,rx=px+Math.cos(a)*(r-4),ry=py+Math.sin(a)*(r-4);ctx.fillStyle=cols[i%cols.length];ctx.fillRect(Math.floor(rx),Math.floor(ry),4,4);}
+  ctx.restore();
+}
+
+// Öfke modu uyarı çizgileri (kenarlarda güvenli alan göster)
+function drawRageWarning(){
+  ctx.save();ctx.globalAlpha=0.22+0.1*Math.sin(frame*0.3);
+  ctx.fillStyle='#ff2200';
+  // Ortada tehlikeli alan (60px'den 340px'e kadar)
+  ctx.fillRect(60,0,280,700);
+  ctx.globalAlpha=0.5;
+  ctx.fillStyle='#00ff88';
+  // Güvenli köşeler (0-60 ve 340-400)
+  ctx.fillRect(0,0,60,700);
+  ctx.fillRect(340,0,60,700);
+  ctx.globalAlpha=0.8;
+  ctx.fillStyle='#fff';ctx.font='6px "Press Start 2P",monospace';ctx.textAlign='center';
+  ctx.fillText('SAFE',30,350);ctx.fillText('SAFE',370,350);
+  ctx.restore();
+}
+
+function initStars(){bgStars=[];for(let i=0;i<55;i++)bgStars.push({x:Math.random()*400,y:Math.random()*700,sz:Math.random()<0.7?1:2,ph:Math.random()*Math.PI*2});}
+function drawBG(){
+  const g=ctx.createLinearGradient(0,0,0,700);g.addColorStop(0,'#060612');g.addColorStop(1,'#0a0a1a');
+  ctx.fillStyle=g;ctx.fillRect(0,0,400,700);
+  ctx.strokeStyle='rgba(0,255,180,0.05)';ctx.lineWidth=1;
+  const gs=40,oy=scrollY%gs;
+  for(let y=-gs;y<750;y+=gs){ctx.beginPath();ctx.moveTo(0,y+oy);ctx.lineTo(400,y+oy);ctx.stroke();}
+  for(let x=0;x<400;x+=gs){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,700);ctx.stroke();}
+  bgStars.forEach(s=>{const fl=0.5+0.5*Math.sin(frame*0.04+s.ph);ctx.fillStyle=`rgba(255,255,255,${(fl*0.7).toFixed(2)})`;ctx.fillRect(s.x,s.y,s.sz,s.sz);});
+  ctx.fillStyle='rgba(0,255,180,0.12)';ctx.fillRect(0,640,400,2);
+}
+
+function spawnP(x,y,color,n=8){for(let i=0;i<n;i++){const a=(Math.PI*2/n)*i+Math.random()*0.4,sp=1.5+Math.random()*3;particles.push({x,y,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp,life:30+Math.random()*20,ml:50,color,sz:2+Math.random()*2});}}
+function tickP(){particles=particles.filter(p=>p.life>0);particles.forEach(p=>{p.x+=p.vx;p.y+=p.vy;p.vy+=0.12;p.life--;ctx.fillStyle=p.color+Math.floor((p.life/p.ml)*200).toString(16).padStart(2,'00');ctx.fillRect(Math.floor(p.x),Math.floor(p.y),Math.ceil(p.sz),Math.ceil(p.sz));});}
+
+function spawnCow(){
+  const fl=Math.random()<0.5;
+  const sx=fl?-70:470;
+  // Biraz dalgalı vy (yayvan hareket)
+  const baseVx=fl?(0.55+Math.random()*0.45):-(0.55+Math.random()*0.45);
+  cows.push({
+    x:sx,y:30+Math.random()*140,
+    vx:baseVx,vy:0.08+Math.random()*0.08,
+    waveAmp:0.6+Math.random()*0.8, // yayvan dalga genliği
+    waveFreq:0.03+Math.random()*0.025,
+    waveOffset:Math.random()*Math.PI*2,
+    shootTimer:Math.floor(45+Math.random()*60),fromLeft:fl,dead:false,deadTimer:0,hitFlash:0
+  });
+}
+function cowShootMilk(cow){milkDrops.push({x:cow.x+20,y:cow.y+32,vx:(Math.random()-0.5)*0.4,vy:2.2+speedMult*0.3+Math.random()*0.4});}
+
+function spawnDog(){
+  const x=30+Math.random()*340;
+  // Daha dinamik köpek: zigzag ve hafif yön değişimi
+  dogs.push({
+    x,y:-50,
+    vx:(Math.random()-0.5)*0.5,
+    vy:1.1+speedMult*0.25+Math.random()*0.3,
+    zigzagAmp:1.2+Math.random()*2.2,   // zigzag genliği
+    zigzagFreq:0.06+Math.random()*0.06, // zigzag frekansı
+    zigzagOffset:Math.random()*Math.PI*2,
+    dirChangeTimer:Math.floor(30+Math.random()*40), // yön değişim sayacı
+    dead:false,deadTimer:0
+  });
+}
+
+// Boss mermi ateşleme
+function bossFire(){
+  if(!boss||boss.dead||bossStunned)return;
+  const def=boss.def;
+  const idx=boss.idx;
+  const angle=Math.atan2(player.y-boss.y,player.x-boss.x);
+  const spd=2.2+idx*0.18;
+  const col=def.eye;
+  
+  if(idx<5){
+    // Düşük seviye: tek mermi oyuncuya doğru
+    bossBullets.push({x:boss.x,y:boss.y,vx:Math.cos(angle)*spd,vy:Math.sin(angle)*spd,color:col,idx});
+  } else if(idx<10){
+    // Orta seviye: 3'lü spread
+    for(let i=-1;i<=1;i++){
+      bossBullets.push({x:boss.x,y:boss.y,vx:Math.cos(angle+i*0.35)*spd,vy:Math.sin(angle+i*0.35)*spd,color:col,idx});
+    }
+  } else if(idx<15){
+    // Yüksek seviye: 5'li spread + oyuncuya
+    for(let i=-2;i<=2;i++){
+      bossBullets.push({x:boss.x,y:boss.y,vx:Math.cos(angle+i*0.28)*spd,vy:Math.sin(angle+i*0.28)*spd,color:col,idx});
+    }
+  } else {
+    // En yüksek seviye: 5'li spread daha hızlı
+    for(let i=-2;i<=2;i++){
+      bossBullets.push({x:boss.x,y:boss.y,vx:Math.cos(angle+i*0.32)*(spd*1.3),vy:Math.sin(angle+i*0.32)*(spd*1.3),color:col,idx});
+    }
+  }
+}
+
+// Boss zayıf nokta sistemi
+function getWeakSpotDamage(hp){
+  if(hp>400)return 50;
+  if(hp>160)return 20;
+  if(hp>60)return 10;
+  return 5;
+}
+function resetWeakSpot(){bossWeakHits=0;bossWeakActive=false;document.getElementById('weakSpotHud').style.display='none';}
+function onBossClick(e){
+  if(!boss||boss.dead||gameState!=='playing')return;
+  if(boss.def.hp<=3)return; // sadece hp>3 olan boss'larda
+  if(!bossWeakActive||bossStunned)return;
+  const rect=canvas.getBoundingClientRect();
+  const cx=(e.clientX-rect.left)*(400/rect.width);
+  const cy=(e.clientY-rect.top)*(700/rect.height);
+  // Boss'a tıkladı mı?
+  if(Math.abs(cx-boss.x)<54&&Math.abs(cy-boss.y)<54){
+    triggerWeakStun();
+  }
+}
+canvas.addEventListener('click',onBossClick);
+canvas.addEventListener('touchstart',handleTouch,{passive:false});
+
+function handleTouch(e){
+  e.preventDefault();
+  const r=canvas.getBoundingClientRect();
+  const t=e.touches[0];
+  const tx=(t.clientX-r.left)*(400/r.width);
+  const ty=(t.clientY-r.top)*(700/r.height);
+  // Zayıf nokta tıklama
+  if(bossWeakActive&&!bossStunned&&boss&&!boss.dead&&boss.def.hp>3){
+    if(Math.abs(tx-boss.x)<54&&Math.abs(ty-boss.y)<54){triggerWeakStun();return;}
+  }
+  inputLeft=tx<200;inputRight=tx>=200;
+}
+
+function triggerWeakStun(){
+  bossWeakActive=false;
+  bossStunned=true;
+  bossStunTimer=120; // 2 saniye (60fps)
+  const dmg=getWeakSpotDamage(boss.def.hp);
+  boss.hp=Math.max(0,boss.hp-dmg);
+  SFX.stun();spawnP(boss.x,boss.y,'#ffff00',20);
+  document.getElementById('weakSpotHud').style.display='none';
+  updateHUD();
+  if(boss.hp<=0){SFX.bossDie();spawnP(boss.x,boss.y,'#ffcc00',24);score+=100*(bossIndex+1);if(lives<3){lives++;spawnP(player.x,player.y,'#44ff88',14);}boss.dead=true;boss.deadTimer=40;updateHUD();}
+}
+
+// Öfke modu: %20 canında tetiklenir
+let bossRageTriggered=false;
+function checkBossRage(){
+  if(!boss||boss.dead||bossRageTriggered)return;
+  if(boss.def.hp<=50)return;
+  if(boss.hp/boss.maxHp<=0.2){
+    bossRageTriggered=true;
+    bossRageActive=true;
+    bossRageTimer=120; // 2 saniye
+    SFX.rage();
+    document.getElementById('bossAlert').style.display='block';
+    document.getElementById('bossAlertText').textContent=lang==='tr'?'⚠ ÖFKE MODU! ⚠':'⚠ RAGE MODE! ⚠';
+    document.getElementById('bossName').textContent='';
+    setTimeout(()=>document.getElementById('bossAlert').style.display='none',1800);
+    // Öfke modu: her yere mermi saç (kenarlarda güvenli alan)
+    fireRageSalvo();
+  }
+}
+function fireRageSalvo(){
+  if(!boss||!bossRageActive)return;
+  // 16 yönlü mermi FAKAT kenarlarda (0-60 ve 340-400 arası) güvenli alan
+  for(let i=0;i<16;i++){
+    const a=(Math.PI*2/16)*i;
+    const spd=3.5+boss.idx*0.1;
+    const tx=boss.x+Math.cos(a)*600,ty=boss.y+Math.sin(a)*600;
+    // Mermiyi gönder ama sol/sağ güvenli alan dışına düşecekleri hesapla
+    bossRageBullets.push({x:boss.x,y:boss.y,vx:Math.cos(a)*spd,vy:Math.sin(a)*spd,color:'#ff4400',life:80});
+  }
+}
+
+function activateFireAura(){fireAuraActive=true;fireAuraTimer=FIRE_AURA_SECS*60;SFX.fireOn();spawnP(player.x,player.y,'#ff8800',20);document.getElementById('fireAuraHud').style.display='block';}
+function updateFireAura(){
+  if(!fireAuraActive)return;
+  fireAuraTimer--;
+  document.getElementById('fireTimer').textContent=Math.ceil(fireAuraTimer/60)+'s';
+  if(fireAuraTimer<=0){fireAuraActive=false;document.getElementById('fireAuraHud').style.display='none';}
+  dogs=dogs.filter(d=>{
+    if(d.dead)return true;
+    if(Math.hypot(d.x-player.x,d.y-player.y)<FIRE_AURA_RADIUS){
+      d.dead=true;d.deadTimer=14;spawnP(d.x,d.y,'#ff6600',10);SFX.explode();
+      score+=25;dogsKilled++;
+      if(dogsKilled>=nextFireAt&&!bossActive){nextFireAt+=FIRE_DOGS_INTERVAL;activateFireAura();}
+      updateHUD();
+    }
+    return true;
+  });
+}
+
+function activateShield(){
+  if(!specialReady||gameState!=='playing')return;
+  // Kullan kalkan için de milkCollected sıfırla
+  shieldActive=true;shieldTimer=SHIELD_SECS*60;
+  SFX.shield();spawnP(player.x,player.y,'#00ff88',18);
+  specialReady=false;milkCollected=0;
+  document.getElementById('shieldAuraHud').style.display='block';
+  document.getElementById('shieldBtn').classList.remove('visible');
+  document.getElementById('specialBtn').classList.remove('visible');
+  updateHUD();
+}
+function updateShield(){
+  if(!shieldActive)return;
+  shieldTimer--;
+  document.getElementById('shieldTimer').textContent=Math.ceil(shieldTimer/60)+'s';
+  if(shieldTimer<=0){shieldActive=false;document.getElementById('shieldAuraHud').style.display='none';}
+}
+
+function checkBossSpawn(){if(bossActive||bossIndex>=BOSS_DEFS.length)return;if(dogsKilled>=BOSS_DEFS[bossIndex].dogsNeeded)triggerBoss(BOSS_DEFS[bossIndex]);}
+function triggerBoss(def){bossActive=true;dogs=[];SFX.bossWarn();document.getElementById('bossAlertText').textContent=lang==='tr'?'⚠ BOSS GELİYOR! ⚠':'⚠ BOSS INCOMING! ⚠';document.getElementById('bossName').textContent=lang==='tr'?def.name:def.nameEN;document.getElementById('bossAlert').style.display='block';setTimeout(()=>{document.getElementById('bossAlert').style.display='none';spawnBoss(def);},2200);}
+function spawnBoss(def){
+  const spd=1.4*Math.pow(1.2071,bossIndex);
+  boss={x:200,y:120,vx:spd*0.42,vy:spd*1.15,dir:1,dirY:1,hp:def.hp,maxHp:def.hp,def,idx:bossIndex,sc:4,hitFlash:0,dead:false,deadTimer:0,fireTimer:0};
+  bossWeakHits=0;bossWeakActive=false;bossStunned=false;bossStunTimer=0;bossRageActive=false;bossRageTimer=0;bossRageTriggered=false;bossBullets=[];bossRageBullets=[];
+  resetWeakSpot();
+  startMusic(bossIndex);
+}
+function updateBoss(){
+  if(!boss)return;
+  if(boss.dead){boss.deadTimer--;if(boss.deadTimer<=0){boss=null;bossActive=false;bossIndex++;bossSpeedMult*=1.18;dogs=[];bossBullets=[];bossRageBullets=[];updateHUD();startMusic();}return;}
+  
+  // Stun iken hareket etme
+  if(bossStunned){
+    bossStunTimer--;
+    if(bossStunTimer<=0){bossStunned=false;bossWeakHits=0;}
+    return;
+  }
+
+  // Öfke modu süresi
+  if(bossRageActive){
+    bossRageTimer--;
+    if(bossRageTimer%20===0)fireRageSalvo(); // öfke süresince sürekli mermi
+    if(bossRageTimer<=0){bossRageActive=false;}
+  }
+
+  // 400+ HP boss: direkt oyuncuya doğru saldırı
+  if(boss.def.hp>400&&!bossRageActive){
+    const dx=player.x-boss.x,dy=player.y-boss.y;
+    const dist=Math.hypot(dx,dy);
+    if(dist>60){
+      const chaseSpd=0.7+boss.idx*0.05;
+      boss.x+=dx/dist*chaseSpd;boss.y+=dy/dist*chaseSpd;
+    }
+  } else {
+    boss.x+=boss.vx*boss.dir*(0.6+speedMult*0.05);boss.y+=boss.vy*boss.dirY*(0.6+speedMult*0.05);
+    if(boss.x>370){boss.x=370;boss.dir=-1;}if(boss.x<30){boss.x=30;boss.dir=1;}
+    if(boss.y>440){boss.y=440;boss.dirY=-1;}if(boss.y<40){boss.y=40;boss.dirY=1;}
+  }
+
+  boss.hitFlash=Math.max(0,boss.hitFlash-1);
+
+  // Boss ateş eder
+  boss.fireTimer++;
+  if(boss.fireTimer>=getBossFireRate(boss.idx)){boss.fireTimer=0;bossFire();}
+
+  checkBossRage();
+
+  if(Math.abs(boss.x-player.x)<42&&Math.abs(boss.y-player.y)<42){
+    if(!shieldActive){
+      lives--;SFX.dogHit();spawnP(player.x,player.y,'#ff4455',12);updateHUD();
+    }
+    boss.dir=boss.x<player.x?-1:1;boss.dirY=boss.y<player.y?-1:1;
+    boss.x+=boss.dir*60;boss.y+=boss.dirY*60;
+    boss.x=Math.max(30,Math.min(370,boss.x));boss.y=Math.max(40,Math.min(640,boss.y));
+    if(lives<=0){deathReason=lang==='tr'?'BOSS SENİ EZDİ!':'BOSS CRUSHED YOU!';setTimeout(endGame,400);}
+  }
+}
+function hitBoss(fromMilk){
+  if(!boss||boss.dead||bossStunned)return false;
+  boss.hp--;boss.hitFlash=8;SFX.bossHit();spawnP(boss.x,boss.y,boss.def.eye,8);
+  boss.dir=boss.x<player.x?-1:1;boss.dirY=boss.y<player.y?-1:1;
+  boss.x+=boss.dir*45;boss.y+=boss.dirY*45;
+  boss.x=Math.max(30,Math.min(370,boss.x));boss.y=Math.max(40,Math.min(640,boss.y));
+
+  // Zayıf nokta sistemi (hp>3 olan boss'larda)
+  if(fromMilk&&boss.def.hp>3){
+    bossWeakHits++;
+    if(bossWeakHits>=2&&!bossWeakActive){
+      bossWeakActive=true;
+      SFX.weakSpot();
+      document.getElementById('weakSpotHud').style.display='block';
+    }
+  }
+
+  if(boss.hp<=0){SFX.bossDie();spawnP(boss.x,boss.y,'#ffcc00',24);spawnP(boss.x,boss.y,boss.def.color,20);score+=100*(bossIndex+1);if(lives<3){lives++;spawnP(player.x,player.y,'#44ff88',14);}boss.dead=true;boss.deadTimer=40;updateHUD();resetWeakSpot();}
+  return true;
+}
+
+function fireSpecial(){
+  if(!specialReady||gameState!=='playing')return;
+  specialReady=false;milkCollected=0;SFX.special();spawnP(player.x,player.y,'#00ffff',18);
+  specialBullets.push({x:player.x,y:player.y-30,vx:0,vy:-12});
+  document.getElementById('specialBtn').classList.remove('visible');
+  document.getElementById('shieldBtn').classList.remove('visible');
+  updateHUD();
+}
+
+function updateHUD(){
+  document.getElementById('hScore').textContent=score;
+  document.getElementById('hSpd').textContent=speedMult.toFixed(1)+'x';
+  const lv=Math.max(0,lives);
+  document.getElementById('hLives').textContent='♥'.repeat(lv)+'♡'.repeat(Math.max(0,3-lv));
+  document.getElementById('hLives').style.color=lives===1?'#ff8800':'#ff4455';
+  const kl=lang==='tr'?'KÖPEK:':'DOGS:';
+  const nb=bossIndex<BOSS_DEFS.length?BOSS_DEFS[bossIndex].dogsNeeded:999;
+  document.getElementById('hKill').textContent=kl+' '+dogsKilled+(bossIndex<BOSS_DEFS.length?' / '+nb:'');
+  document.getElementById('hCow').textContent='🐄 '+cowsShot+'/3';
+  document.getElementById('hCow').style.color=cowsShot>=2?'#ff4444':'#ffaaaa';
+  document.getElementById('milkBarFill').style.width=(Math.min(milkCollected/5,1)*100)+'%';
+  document.getElementById('milkBarLabel').textContent=(lang==='tr'?'🥛 SÜPER SÜT ':'🥛 SUPER MILK ')+milkCollected+'/5';
+  if(specialReady){
+    document.getElementById('specialBtn').classList.add('visible');
+    document.getElementById('shieldBtn').classList.add('visible');
+  } else {
+    document.getElementById('specialBtn').classList.remove('visible');
+    document.getElementById('shieldBtn').classList.remove('visible');
+  }
+  document.getElementById('fireAuraHud').childNodes[0].textContent=lang==='tr'?'🔥 ATEŞ AURASI! 🔥':'🔥 FIRE AURA! 🔥';
+  document.getElementById('shieldAuraHud').childNodes[0].textContent=lang==='tr'?'🛡 KALKAN AKTİF! 🛡':'🛡 SHIELD ACTIVE! 🛡';
+  const dtf=nextFireAt-dogsKilled;
+  if(fireAuraActive)document.getElementById('hKill').style.color='#ff4400';
+  else if(!bossActive&&dtf<=3&&dtf>0)document.getElementById('hKill').style.color='#ff8800';
+  else document.getElementById('hKill').style.color='#aaffaa';
+}
+
+function update(){
+  if(gameState!=='playing')return;
+  frame++;speedMult=calcSpeed();scrollY+=speedMult;
+  const PSPD=(4.2+speedMult*0.25)*1.2;
+  if(inputLeft)player.vx=Math.max(player.vx-0.9,-PSPD);else if(inputRight)player.vx=Math.min(player.vx+0.9,PSPD);else player.vx*=0.80;
+  player.x=Math.max(player.w/2,Math.min(400-player.w/2,player.x+player.vx));
+
+  // İnek spawn — daha sık
+  const cowI=Math.max(140,380-speedMult*30);
+  if(frame%Math.round(cowI)===0)spawnCow();
+  // Çift inek spawn şansı
+  if(frame%Math.round(cowI*1.7)===0)spawnCow();
+
+  if(!bossActive){
+    // Köpek spawn — daha sık
+    const dogI=Math.max(90,300-speedMult*28);
+    if(frame%Math.round(dogI)===0)spawnDog();
+    // Ekstra köpek spawn
+    if(frame%Math.round(dogI*1.5)===0&&speedMult>1.2)spawnDog();
+  }
+
+  updateBoss();checkBossSpawn();updateFireAura();updateShield();
+
+  // İnek güncelle — yayvan hareket
+  cows=cows.filter(c=>{
+    if(c.dead){c.deadTimer--;return c.deadTimer>0;}
+    c.hitFlash=Math.max(0,(c.hitFlash||0)-1);
+    c.x+=c.vx*(0.55+speedMult*0.07);
+    // Yayvan yukarı-aşağı dalgası
+    c.y+=Math.sin(frame*c.waveFreq+c.waveOffset)*c.waveAmp*0.4;
+    c.shootTimer--;
+    if(c.shootTimer<=0){cowShootMilk(c);c.shootTimer=Math.floor(45+Math.random()*55);}
+    return c.x>-90&&c.x<490&&c.y<360;
+  });
+
+  specialBullets=specialBullets.filter(b=>{
+    b.x+=b.vx;b.y+=b.vy;if(b.y<-20)return false;
+    if(boss&&!boss.dead&&!bossStunned&&Math.abs(b.x-boss.x)<46&&Math.abs(b.y-boss.y)<46){hitBoss(true);return false;}
+    for(let i=cows.length-1;i>=0;i--){const c=cows[i];if(!c.dead&&Math.abs(b.x-c.x)<38&&Math.abs(b.y-c.y)<28){c.hitFlash=12;SFX.cowShot();spawnP(c.x+20,c.y+20,'#ff6666',10);cowsShot++;updateHUD();if(cowsShot>=3){deathReason=lang==='tr'?'3 İNEK VURDUN! OYUN BİTTİ.':'3 COWS SHOT! GAME OVER.';setTimeout(endGame,600);}return false;}}
+    for(let i=dogs.length-1;i>=0;i--){const d=dogs[i];if(!d.dead&&Math.abs(b.x-d.x)<36&&Math.abs(b.y-d.y)<28){d.dead=true;d.deadTimer=20;spawnP(d.x,d.y,'#ff8844',14);SFX.explode();score+=25;dogsKilled++;if(dogsKilled>=nextFireAt&&!bossActive){nextFireAt+=FIRE_DOGS_INTERVAL;activateFireAura();}updateHUD();return false;}}
+    return true;
+  });
+
+  milkDrops=milkDrops.filter(m=>{
+    m.x+=m.vx;m.y+=m.vy;
+    if(Math.abs(m.x-player.x)<32&&Math.abs(m.y-player.y)<32){
+      score+=10+Math.floor(speedMult*2);spawnP(m.x,m.y,'#aaddff',6);SFX.collect();
+      milkCollected=Math.min(milkCollected+1,5);
+      if(milkCollected>=5&&!specialReady){specialReady=true;SFX.tankFull();}
+      updateHUD();return false;
+    }
+    return m.y<730;
+  });
+
+  // Köpek güncelle — zigzag ve hareketli
+  dogs=dogs.filter(d=>{
+    if(d.dead){d.deadTimer--;return d.deadTimer>0;}
+    // Zigzag hareketi
+    d.x+=d.vx+Math.sin(frame*d.zigzagFreq+d.zigzagOffset)*d.zigzagAmp;
+    d.y+=d.vy*(0.7+speedMult*0.12);
+    // Ekran dışına çıkmasın
+    if(d.x<10)d.x=10;if(d.x>390)d.x=390;
+    // Periyodik yön değişimi
+    d.dirChangeTimer--;
+    if(d.dirChangeTimer<=0){d.vx=(Math.random()-0.5)*0.7;d.dirChangeTimer=Math.floor(25+Math.random()*35);}
+    if(!fireAuraActive&&Math.abs(d.x-player.x)<34&&Math.abs(d.y-player.y)<30){
+      d.dead=true;d.deadTimer=12;
+      if(!shieldActive){lives--;SFX.dogHit();spawnP(player.x,player.y,'#ff4455',12);updateHUD();if(lives<=0){deathReason=lang==='tr'?'KÖPEKLER SENİ YENDİ!':'DOGS GOT YOU!';setTimeout(endGame,400);}}
+      return true;
+    }
+    return d.y<720;
+  });
+
+  // Boss mermileri güncelle
+  bossBullets=bossBullets.filter(b=>{
+    b.x+=b.vx;b.y+=b.vy;
+    if(b.x<-20||b.x>420||b.y<-20||b.y>720)return false;
+    if(Math.abs(b.x-player.x)<20&&Math.abs(b.y-player.y)<20){
+      if(!shieldActive){lives--;SFX.dogHit();spawnP(player.x,player.y,'#ff4455',10);updateHUD();if(lives<=0){deathReason=lang==='tr'?'BOSS MERMİSİ!':'BOSS BULLET!';setTimeout(endGame,400);}}
+      return false;
+    }
+    return true;
+  });
+
+  // Öfke modu mermileri
+  bossRageBullets=bossRageBullets.filter(b=>{
+    b.x+=b.vx;b.y+=b.vy;b.life--;
+    if(b.life<=0||b.x<-20||b.x>420||b.y<-20||b.y>720)return false;
+    // Güvenli alan: x<60 veya x>340 ise zarar vermez
+    const inSafeZone=b.x<60||b.x>340;
+    if(!inSafeZone&&Math.abs(b.x-player.x)<18&&Math.abs(b.y-player.y)<18){
+      if(!shieldActive){lives--;SFX.dogHit();spawnP(player.x,player.y,'#ff4455',10);updateHUD();if(lives<=0){deathReason=lang==='tr'?'BOSS ÖFKE ATEŞİ!':'BOSS RAGE FIRE!';setTimeout(endGame,400);}}
+      return false;
+    }
+    return true;
+  });
+}
+
+function draw(){
+  ctx.clearRect(0,0,400,700);drawBG();
+  // Öfke modu uyarı
+  if(bossRageActive)drawRageWarning();
+  milkDrops.forEach(m=>drawMilk(m.x-9,m.y-9,3));
+  if(fireAuraActive)drawFireAura(player.x,player.y,frame);
+  cows.forEach(c=>{if(c.dead){ctx.globalAlpha=c.deadTimer/20;}else if((c.hitFlash||0)>0){ctx.fillStyle='rgba(255,50,50,0.4)';ctx.fillRect(c.x-8,c.y-4,60,50);ctx.globalAlpha=0.5+(c.hitFlash%2)*0.5;}drawCow(c.x-8,c.y,3,frame,c.vx<0);ctx.globalAlpha=1;if(!c.dead){ctx.fillStyle='#aaffaa';ctx.font='5px "Press Start 2P",monospace';ctx.textAlign='center';ctx.fillText(lang==='tr'?'DOST':'ALLY',c.x+22,c.y-4);ctx.textAlign='left';}});
+  dogs.forEach(d=>{if(d.dead)ctx.globalAlpha=d.deadTimer/20;if(fireAuraActive&&!d.dead){ctx.shadowBlur=8;ctx.shadowColor='#ff4400';}drawDog(d.x-20,d.y-20,3,frame);ctx.globalAlpha=1;ctx.shadowBlur=0;});
+  if(boss){
+    if(boss.dead){ctx.globalAlpha=boss.deadTimer/40;}
+    else if(boss.hitFlash>0){ctx.globalAlpha=0.4+0.6*(boss.hitFlash%2);}
+    drawBoss(boss.x-28,boss.y-28,boss.sc,frame,boss.def,boss.idx);
+    ctx.globalAlpha=1;
+    if(!boss.dead)drawBossBar(boss.x,boss.y-34,boss.hp,boss.maxHp,lang==='tr'?boss.def.name:boss.def.nameEN);
+  }
+  bossBullets.forEach(b=>drawBossBullet(b));
+  bossRageBullets.forEach(b=>drawRageBullet(b));
+  specialBullets.forEach(b=>drawBullet(b.x,b.y));
+  if(specialReady&&frame%10<5){ctx.shadowBlur=20;ctx.shadowColor='#00ffff';}
+  if(fireAuraActive&&frame%6<3){ctx.shadowBlur=28;ctx.shadowColor='#ff6600';}
+  drawCat(player.x-player.w/2,player.y-player.h/2,4,frame);
+  drawShieldCircle(player.x,player.y);
+  ctx.shadowBlur=0;
+  tickP();
+}
+
+function loop(){if(gameState==='playing'){update();draw();}animId=requestAnimationFrame(loop);}
+
+function showScreen(id){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));if(id)document.getElementById(id).classList.add('active');document.getElementById('hud').classList.remove('active');document.getElementById('specialBtn').classList.remove('visible');document.getElementById('shieldBtn').classList.remove('visible');document.getElementById('bossAlert').style.display='none';document.getElementById('milkBarWrap').classList.remove('active');document.getElementById('fireAuraHud').style.display='none';document.getElementById('shieldAuraHud').style.display='none';document.getElementById('weakSpotHud').style.display='none';}
+function showMenu(){gameState='menu';stopMusic();showScreen('menuScreen');document.getElementById('hiVal').textContent=best;applyLang();drawLogo();startMenuCat();}
+function startCountdown(){showScreen('cdScreen');gameState='countdown';let n=3;const ne=document.getElementById('cdNum'),le=document.getElementById('cdLbl');le.textContent=lang==='tr'?'HAZIR OL!':'GET READY!';function tick(){ne.style.animation='none';void ne.offsetHeight;ne.style.animation='cpop 0.9s ease-out';if(n>0){ne.textContent=n;ne.style.color='#00ffcc';SFX.cdown();n--;setTimeout(tick,1000);}else{ne.textContent=lang==='tr'?'BAŞLA!':'GO!';ne.style.color='#ffcc00';SFX.go();setTimeout(beginGame,750);}}tick();}
+function beginGame(){
+  score=0;lives=3;cowsShot=0;specialReady=false;milkCollected=0;speedMult=BASE_SPEED;frame=0;scrollY=0;deathReason='';
+  dogsKilled=0;bossIndex=0;bossActive=false;boss=null;bossSpeedMult=1.0;
+  fireAuraActive=false;fireAuraTimer=0;nextFireAt=FIRE_DOGS_INTERVAL;
+  shieldActive=false;shieldTimer=0;
+  bossWeakHits=0;bossWeakActive=false;bossStunned=false;bossStunTimer=0;
+  bossRageActive=false;bossRageTimer=0;bossRageTriggered=false;
+  player.x=200;player.y=590;player.vx=0;
+  milkDrops=[];cows=[];dogs=[];particles=[];specialBullets=[];bossBullets=[];bossRageBullets=[];
+  showScreen(null);
+  document.getElementById('hud').classList.add('active');
+  document.getElementById('milkBarWrap').classList.add('active');
+  gameState='playing';updateHUD();startMusic();
+  if(animId)cancelAnimationFrame(animId);animId=requestAnimationFrame(loop);
+  setTimeout(spawnCow,800);
+}
+function endGame(){gameState='gameover';stopMusic();if(score>best){best=score;localStorage.setItem('nk_best',best);}document.getElementById('goSV').textContent=score;document.getElementById('goBV').textContent=best;document.getElementById('goReason').textContent=deathReason;showScreen('goScreen');applyLang();}
+
+canvas.addEventListener('touchmove',e=>{e.preventDefault();const r=canvas.getBoundingClientRect(),t=e.touches[0],tx=(t.clientX-r.left)*(400/r.width);inputLeft=tx<200;inputRight=tx>=200;},{passive:false});
+canvas.addEventListener('touchend',e=>{e.preventDefault();inputLeft=false;inputRight=false;},{passive:false});
+document.addEventListener('keydown',e=>{if(e.key==='ArrowLeft'||e.key==='a')inputLeft=true;if(e.key==='ArrowRight'||e.key==='d')inputRight=true;if(e.key===' ')fireSpecial();if(e.key==='s'||e.key==='S')activateShield();});
+document.addEventListener('keyup',e=>{if(e.key==='ArrowLeft'||e.key==='a')inputLeft=false;if(e.key==='ArrowRight'||e.key==='d')inputRight=false;});
+
+function toggleSound(){soundOn=!soundOn;document.getElementById('soundBtn').textContent=soundOn?'🔊 SES':'🔇 SES';if(!soundOn)stopMusic();else if(gameState==='playing')startMusic(bossActive?bossIndex:undefined);}
+function toggleLang(){lang=lang==='tr'?'en':'tr';applyLang();}
+
+const T={
+  tr:{titleMain:'NİNJA KEDİ',titleSub:'NINJA CAT',sub:'SOULS-LIKE MINI MOBILE GAME',play:'▶ OYNA',hi:'EN İYİ:',langSw:'EN',htp:'❓ NASIL OYNANIR',goT:'GAME OVER',goSL:'PUAN',goB:'EN İYİ:',retry:'↺ TEKRAR',toMenu:'ANA MENÜ',specBtn:'⚡ ATIŞ',shieldBtn:'🛡 KALKAN',bossAlert:'⚠ BOSS GELİYOR! ⚠'},
+  en:{titleMain:'NINJA CAT',titleSub:'NİNJA KEDİ',sub:'SOULS-LIKE MINI MOBILE GAME',play:'▶ PLAY',hi:'BEST:',langSw:'TR',htp:'❓ HOW TO PLAY',goT:'GAME OVER',goSL:'SCORE',goB:'BEST:',retry:'↺ RETRY',toMenu:'MAIN MENU',specBtn:'⚡ FIRE',shieldBtn:'🛡 SHIELD',bossAlert:'⚠ BOSS INCOMING! ⚠'},
+};
+function applyLang(){const s=T[lang];const $=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};const h=(id,v)=>{const e=document.getElementById(id);if(e)e.innerHTML=v;};$('titleMain',s.titleMain);$('titleSub',s.titleSub);$('lsub',s.sub);$('playBtn',s.play);h('hiDisp',s.hi+' <span id="hiVal">'+best+'</span>');$('langBtn',s.langSw);$('htpBtn',s.htp);$('goT',s.goT);$('goSL',s.goSL);h('goB',s.goB+' <span id="goBV">'+best+'</span>');$('retryBtn',s.retry);$('menuBtn',s.toMenu);$('specialBtn',s.specBtn);$('shieldBtn',s.shieldBtn);$('bossAlertText',s.bossAlert);updateHUD();}
+
+let htpTimer=null;
+function showHTP(){
+  if(htpTimer)clearTimeout(htpTimer);
+  showScreen('htpScreen');
+  const isEN=lang==='en';
+  document.getElementById('htpTitle').textContent=isEN?'HOW TO PLAY':'NASIL OYNANIR';
+  document.getElementById('htpText').innerHTML=isEN
+    ?'🐄 COWS ARE YOUR FRIENDS<br>DON\'T SHOOT THEM!<br><br>🥛 COLLECT MILK (5 = POWER UP!)<br>⚡ FIRE: SHOOT SPECIAL BULLET<br>🛡 SHIELD: 5 SECONDS PROTECTION<br><br>🐕 DEFEAT DOGS → FACE BOSSES<br>🔥 EVERY 7 DOGS: FIRE AURA!<br><br>💥 HIT BOSS TWICE WITH MILK<br>WEAK SPOT OPENS → TAP TO STUN!<br><br>⚠ AT 20% HP BOSSES RAGE!<br>ESCAPE TO THE SIDES!<br><br>🏆 20 BOSSES TOTAL!'
+    :'🐄 İNEKLER BİZİM DOSTUMUZ<br>ONLARI VURMA!<br><br>🥛 SÜT TOPLA (5 = GÜÇ!)<br>⚡ ATIŞ: ÖZEL MERMİ AT<br>🛡 KALKAN: 5 SANİYE KORUMA<br><br>🐕 KÖPEKLERİ VURDUKÇA BOSSLAR!<br>🔥 HER 7 KÖPEKTE ATEŞ AURASI!<br><br>💥 BOSS\'A 2 SÜTLE VUR<br>ZAYIF NOKTA AÇILIR → TIKLA!<br><br>⚠ %20 CANDA ÖFKE MODU!<br>KENARLARA KAÇA!<br><br>🏆 TOPLAM 20 BOSS!';
+  let secs=10;
+  function tick(){document.getElementById('htpBack').textContent=(isEN?secs+' SECONDS TO RETURN...':secs+' SANİYE SONRA GERİ DÖNECEK...');if(secs===0){showMenu();return;}secs--;htpTimer=setTimeout(tick,1000);}
+  tick();
+}
+
+let mcF=0,mcA=null;
+function startMenuCat(){
+  if(mcA)cancelAnimationFrame(mcA);
+  const mc=document.getElementById('menuCat'),mctx=mc.getContext('2d');
+  mctx.imageSmoothingEnabled=false;
+  function step(){mctx.clearRect(0,0,96,96);const bob=Math.sin(mcF*0.07)*4,sc=3,cx=8,cy=Math.floor(4+bob);const p=(dx,dy,c)=>{mctx.fillStyle=c;mctx.fillRect(Math.floor(cx+dx*sc),Math.floor(cy+dy*sc),sc,sc);};const B='#e8c87a',D='#c9a854',E='#111',N='#ff9999',W='#fff',A='#d4a843';p(2,0,A);p(3,0,A);p(9,0,A);p(10,0,A);p(1,1,A);p(2,1,B);p(3,1,B);p(10,1,B);p(11,1,A);for(let i=1;i<=11;i++)for(let j=2;j<=6;j++)p(i,j,B);for(let i=2;i<=10;i++)p(i,2,'#cc2222');p(6,1,'#ff4444');p(3,3,W);p(4,3,W);p(8,3,W);p(9,3,W);if(mcF%50<44){p(3,4,E);p(4,4,E);p(8,4,E);p(9,4,E);}else{p(3,5,D);p(8,5,D);}p(6,5,N);p(0,5,W);p(1,5,W);p(11,5,W);p(12,5,W);for(let i=2;i<=10;i++)for(let j=7;j<=13;j++)p(i,j,B);p(2,7,D);p(10,7,D);p(5,9,D);p(6,9,D);p(7,9,D);p(11,11,D);p(12,10,D);p(12,9,D);p(11,8,D);p(3,14,B);p(4,14,B);p(8,14,B);p(9,14,B);p(3,15,D);p(4,15,D);p(8,15,D);p(9,15,D);if(mcF%30<15){mctx.fillStyle='#ffffaa';mctx.fillRect(cx+40,cy-2,2,2);mctx.fillRect(cx+42,cy-4,2,2);}mcF++;if(gameState==='menu')mcA=requestAnimationFrame(step);}
+  step();
+}
+function drawLogo(){
+  const lc=document.getElementById('logoC'),lctx=lc.getContext('2d');
+  lctx.imageSmoothingEnabled=false;lctx.clearRect(0,0,120,64);
+  const p=(dx,dy,c)=>{lctx.fillStyle=c;lctx.fillRect(dx*3,dy*3+4,3,3);};
+  p(2,0,'#d4a843');p(3,0,'#d4a843');p(6,0,'#d4a843');p(7,0,'#d4a843');
+  for(let i=1;i<=8;i++)for(let j=1;j<=5;j++)p(i,j,'#e8c87a');
+  for(let i=1;i<=8;i++)p(i,2,'#cc2222');
+  p(2,2,'#111');p(3,2,'#111');p(6,2,'#111');p(7,2,'#111');p(4,4,'#ff9999');
+  const m=(dx,dy,c)=>{lctx.fillStyle=c;lctx.fillRect(72+dx*3,dy*3+10,3,3);};
+  m(2,0,'#aaddff');m(3,0,'#aaddff');m(1,1,'#ccecff');m(2,1,'#fff');m(3,1,'#ccecff');m(4,1,'#aaddff');
+  m(0,2,'#aaddff');m(1,2,'#fff');m(2,2,'#fff');m(3,2,'#fff');m(4,2,'#ccecff');m(5,2,'#aaddff');
+  m(1,3,'#ccecff');m(2,3,'#fff');m(3,3,'#fff');m(4,3,'#ccecff');m(2,4,'#aaddff');m(3,4,'#aaddff');
+}
+
+initStars();
+animId=requestAnimationFrame(loop);
+showMenu();
+</script>
+</body>
+</html>
